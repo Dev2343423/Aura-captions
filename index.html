@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraCaptions - AI Word-by-Word Caption Generator</title>
+    
+    <!-- Premium Fonts from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@700;800;900&family=Outfit:wght@400;500;600;700;800&family=Poppins:wght@500;600;700;800&family=Rubik+Mono+One&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand">
+                <span class="brand-logo">✨</span>
+                <h1>AuraCaptions</h1>
+            </div>
+            <p class="subtitle">Generate premium word-by-word fade-in captions locally. No API keys needed.</p>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="workspace">
+            <!-- Left Side: Upload / Player Panel -->
+            <section class="visual-panel">
+                <!-- Dropzone (visible initially) -->
+                <div id="dropzone" class="dropzone">
+                    <input type="file" id="video-upload" accept="video/*" class="file-input">
+                    <div class="dropzone-content">
+                        <div class="upload-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                        </div>
+                        <h3>Upload your video</h3>
+                        <p class="dropzone-hint">Drag & drop or click to browse</p>
+                        <p class="file-limits">Supports MP4, WebM, MOV</p>
+                    </div>
+                </div>
+
+                <!-- Video Preview & Canvas (hidden initially) -->
+                <div id="preview-container" class="preview-container hidden">
+                    <div class="video-wrapper">
+                        <video id="video-player" playsinline></video>
+                        <canvas id="caption-canvas"></canvas>
+                        
+                        <!-- Mini controls on hover -->
+                        <div class="video-overlay-controls">
+                            <button id="btn-play-pause" class="overlay-btn" title="Play/Pause">
+                                <svg id="icon-play" class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                                <svg id="icon-pause" class="btn-icon hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                            </button>
+                            <span id="time-display" class="time-display">0:00 / 0:00</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Side: Customization / Actions Panel -->
+            <section id="control-panel" class="control-panel locked">
+                <div class="panel-card">
+                    <h2>Customize Captions</h2>
+                    <p class="panel-desc">Styling will update in real-time. Export once satisfied.</p>
+                    
+                    <div class="control-group">
+                        <label for="font-family">Typography</label>
+                        <div class="select-wrapper">
+                            <select id="font-family">
+                                <option value="Montserrat" selected>Montserrat (Bold Modern)</option>
+                                <option value="Inter">Inter (Sleek Sans-serif)</option>
+                                <option value="Poppins">Poppins (Rounded Geometric)</option>
+                                <option value="Impact">Impact (Meme Style)</option>
+                                <option value="Rubik Mono One">Rubik Mono (Blocky Display)</option>
+                            </select>
+                        </div>
+                        <div class="font-upload-container">
+                            <label for="font-upload" class="font-upload-label">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="upload-inline-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                Upload Custom Font
+                            </label>
+                            <input type="file" id="font-upload" accept=".ttf,.otf,.woff,.woff2" class="hidden-input">
+                            <span id="font-upload-name" class="font-upload-name">No custom font uploaded</span>
+                        </div>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-group half">
+                            <label for="font-size">Font Size</label>
+                            <div class="range-container">
+                                <input type="range" id="font-size" min="20" max="80" value="40">
+                                <span id="font-size-val">40px</span>
+                            </div>
+                        </div>
+                        <div class="control-group half">
+                            <label for="caption-position">Placement</label>
+                            <div class="range-container">
+                                <input type="range" id="caption-position" min="5" max="95" value="85" step="1">
+                                <span id="caption-position-val">85%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Highlight Theme</label>
+                        <div class="color-swatches">
+                            <button class="swatch active" data-color="#FFDE4D" style="background-color: #FFDE4D;" title="Cyber Yellow"></button>
+                            <button class="swatch" data-color="#39FF14" style="background-color: #39FF14;" title="Neon Green"></button>
+                            <button class="swatch" data-color="#00F0FF" style="background-color: #00F0FF;" title="Electric Cyan"></button>
+                            <button class="swatch" data-color="#FF007F" style="background-color: #FF007F;" title="Hot Magenta"></button>
+                            <button class="swatch" data-color="#FFFFFF" style="background-color: #FFFFFF;" title="Pure White"></button>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="caption-style">Text Style</label>
+                        <div class="select-wrapper">
+                            <select id="caption-style">
+                                <option value="outline" selected>Heavy Outline</option>
+                                <option value="box">Semi-Transparent Box</option>
+                                <option value="shadow">Premium Soft Shadow</option>
+                                <option value="none">None (Plain Text)</option>
+                            </select>
+                        </div>
+                        <div class="checkbox-container">
+                            <label class="checkbox-label" for="text-stroke-toggle">
+                                <input type="checkbox" id="text-stroke-toggle" checked>
+                                <span>Apply Outline Stroke</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Canvas Background</label>
+                        <div class="bg-tiles">
+                            <button type="button" class="bg-tile active" data-bg="original" title="Original Video">
+                                <span class="tile-icon">🎬</span>
+                                <span class="tile-label">Video</span>
+                            </button>
+                            <button type="button" class="bg-tile" data-bg="green" title="Green Screen">
+                                <span class="tile-color" style="background-color: #00FF00;"></span>
+                                <span class="tile-label">Green</span>
+                            </button>
+                            <button type="button" class="bg-tile" data-bg="blue" title="Blue Screen">
+                                <span class="tile-color" style="background-color: #0000FF;"></span>
+                                <span class="tile-label">Blue</span>
+                            </button>
+                            <button type="button" class="bg-tile" data-bg="black" title="Solid Black">
+                                <span class="tile-color" style="background-color: #000000; border: 1px solid rgba(255,255,255,0.25);"></span>
+                                <span class="tile-label">Black</span>
+                            </button>
+                            <button type="button" class="bg-tile" data-bg="white" title="Solid White">
+                                <span class="tile-color" style="background-color: #FFFFFF;"></span>
+                                <span class="tile-label">White</span>
+                            </button>
+                            <button type="button" class="bg-tile" data-bg="custom" id="bg-tile-custom" title="Custom Color">
+                                <span class="tile-color rainbow"></span>
+                                <span class="tile-label">Custom</span>
+                            </button>
+                        </div>
+                        <input type="color" id="bg-custom-color" class="hidden-color-picker" value="#00FF00">
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-group half">
+                            <label for="unspoken-opacity">Unspoken Opacity</label>
+                            <div class="range-container">
+                                <input type="range" id="unspoken-opacity" min="0" max="80" value="30" step="5">
+                                <span id="unspoken-opacity-val">30%</span>
+                            </div>
+                        </div>
+                        <div class="control-group half">
+                            <label for="word-fade-speed">Fade-in Speed</label>
+                            <div class="select-wrapper">
+                                <select id="word-fade-speed">
+                                    <option value="0">Instant Pop</option>
+                                    <option value="100">Fast (100ms)</option>
+                                    <option value="180" selected>Smooth (180ms)</option>
+                                    <option value="300">Dreamy (300ms)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="transcript-editor-group" class="control-group hidden">
+                        <label>Edit Transcript</label>
+                        <div id="transcript-list" class="transcript-list">
+                            <!-- Dynamic inputs loaded here on ASR completion -->
+                        </div>
+                    </div>
+ 
+                    <div class="action-divider"></div>
+
+                    <!-- Generate Actions -->
+                    <div class="action-zone">
+                        <button id="btn-transcribe" class="btn btn-primary" disabled>
+                            <span class="btn-text">Generate Captions</span>
+                            <span class="btn-spinner hidden"></span>
+                        </button>
+                        
+                        <button id="btn-export" class="btn btn-success hidden">
+                            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            <span>Download Captioned Video</span>
+                        </button>
+
+                        <button id="btn-reset" class="btn btn-outline hidden">
+                            <span>Upload Another Video</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Status & Progress Overlay -->
+        <div id="status-overlay" class="status-overlay hidden">
+            <div class="status-card">
+                <h3 id="status-title">Loading Whisper Model...</h3>
+                <p id="status-message">Downloading AI weights (cached on future runs). Please keep this tab active.</p>
+                
+                <div class="progress-bar-container">
+                    <div id="status-progress" class="progress-bar"></div>
+                </div>
+                <span id="status-percent">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Preview Modal -->
+    <div id="preview-modal" class="status-overlay hidden">
+        <div class="preview-modal-card">
+            <div class="preview-modal-header">
+                <h3>Export Complete! ✨</h3>
+                <p>Watch a preview of your captioned video before downloading.</p>
+            </div>
+            
+            <div class="preview-video-wrapper">
+                <video id="preview-video-player" controls></video>
+            </div>
+            
+            <div class="preview-modal-actions">
+                <button id="btn-modal-download" class="btn btn-success">
+                    <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <span>Download Video</span>
+                </button>
+                <button id="btn-modal-close" class="btn btn-outline">
+                    <span>Back to Editor</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module" src="app.js"></script>
+</body>
+</html>
