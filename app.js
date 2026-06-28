@@ -63,6 +63,104 @@ let customFonts = [];
 let currentExportUrl = null;
 let currentExportMimeType = '';
 
+// --- IndexedDB Font Persistence Helpers ---
+const DB_NAME = 'AuraCaptionsDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'customFonts';
+
+function getDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: 'name' });
+            }
+        };
+        request.onsuccess = (e) => resolve(e.target.result);
+        request.onerror = (e) => reject(e.target.error);
+    });
+}
+
+async function saveFontToDB(name, fileName, arrayBuffer) {
+    try {
+        const db = await getDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.put({
+            name: name,
+            fileName: fileName,
+            data: arrayBuffer
+        });
+        return new Promise((resolve, reject) => {
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    } catch (e) {
+        console.error('Error saving font to DB:', e);
+    }
+}
+
+async function getFontsFromDB() {
+    try {
+        const db = await getDB();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.getAll();
+        return new Promise((resolve, reject) => {
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    } catch (e) {
+        console.error('Error loading fonts from DB:', e);
+        return [];
+    }
+}
+
+async function loadPersistedFonts() {
+    const saved = await getFontsFromDB();
+    for (const font of saved) {
+        try {
+            const fontFace = new FontFace(font.name, font.data);
+            await fontFace.load();
+            document.fonts.add(fontFace);
+            
+            // Create blob URL from arrayBuffer
+            const blob = new Blob([font.data], { type: 'font/ttf' });
+            const fontUrl = URL.createObjectURL(blob);
+            
+            const style = document.createElement('style');
+            style.id = `style_${font.name}`;
+            style.innerHTML = `
+                @font-face {
+                    font-family: "${font.name}";
+                    src: url("${fontUrl}") format("truetype");
+                }
+            `;
+            document.head.appendChild(style);
+            
+            customFonts.push({
+                name: font.name,
+                url: fontUrl,
+                styleId: `style_${font.name}`,
+                fontFace: fontFace
+            });
+            
+            // Add option to dropdown
+            const option = document.createElement('option');
+            option.value = font.name;
+            option.text = `Custom: ${font.fileName.split('.')[0]}`;
+            fontSelect.appendChild(option);
+        } catch (err) {
+            console.error('Failed to load persisted font:', font.name, err);
+        }
+    }
+    draw();
+}
+
+// Initialize and restore fonts immediately on load
+loadPersistedFonts();
+
 // Web Audio API routing state
 let audioCtx = null;
 let audioSource = null;
@@ -293,8 +391,11 @@ fontUpload.addEventListener('change', async (e) => {
         fontUploadName.innerText = 'Loading...';
         
         const arrayBuffer = await file.arrayBuffer();
-        const fontFace = new FontFace(fontName, arrayBuffer);
         
+        // Save to IndexedDB database for persistence across refreshes
+        await saveFontToDB(fontName, file.name, arrayBuffer);
+        
+        const fontFace = new FontFace(fontName, arrayBuffer);
         await fontFace.load();
         document.fonts.add(fontFace);
         
@@ -820,20 +921,7 @@ btnReset.addEventListener('click', () => {
     isTranscribed = false;
     isExporting = false;
     
-    // Remove custom fonts
-    customFonts.forEach(font => {
-        const style = document.getElementById(font.styleId);
-        if (style) style.remove();
-        URL.revokeObjectURL(font.url);
-        try {
-            document.fonts.delete(font.fontFace);
-        } catch (e) {}
-    });
-    customFonts = [];
-    // Reset font options to default list
-    while (fontSelect.options.length > 5) {
-        fontSelect.remove(5);
-    }
+    // Reset selected font to Montserrat, but keep custom fonts in dropdown
     fontSelect.value = 'Montserrat';
     fontUpload.value = '';
     fontUploadName.innerText = 'No custom font uploaded';
